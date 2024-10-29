@@ -1,11 +1,14 @@
-import { Namespace } from 'socket.io';
+import {Namespace} from 'socket.io';
 import BaseScreenHandler from '../../base-screen-handler';
-import { TrackChangeEvent } from '../../../events/music-emitter-events';
-import { PosterManager } from './poster-manager';
-import { TrelloPosterManager } from './trello/trello-poster-manager';
+import {TrackChangeEvent} from '../../../events/music-emitter-events';
+import {PosterManager} from './poster-manager';
+import {TrelloPosterManager} from './trello/trello-poster-manager';
+import {PosterModeAll, PosterModesBase, PosterModesGewis, PosterModesHubble} from "./poster-screen-controller";
 
 export class PosterScreenHandler extends BaseScreenHandler {
   public posterManager: PosterManager;
+
+  public mode: PosterModeAll;
 
   private borrelModeDay: number | undefined;
 
@@ -20,7 +23,19 @@ export class PosterScreenHandler extends BaseScreenHandler {
   }
 
   public get borrelMode() {
-    return this.borrelModeDay !== undefined;
+    return this.mode == PosterModesGewis.BORREL;
+  }
+
+  public get closedMode() {
+    return this.mode == PosterModesHubble.CLOSED;
+  }
+
+  public get lastCallMode() {
+    return this.mode == PosterModesHubble.LAST_CALL;
+  }
+
+  public get coboMode() {
+    return this.mode = PosterModesHubble.COBO;
   }
 
   private checkBorrelMode() {
@@ -28,6 +43,7 @@ export class PosterScreenHandler extends BaseScreenHandler {
 
     // If borrelmode is enabled, but we arrive at the next day, disable borrelmode again
     if (this.borrelMode && this.borrelModeDay !== now.getDay()) {
+      this.mode = PosterModesBase.STANDARD;
       this.borrelModeDay = undefined;
       return;
     }
@@ -39,12 +55,26 @@ export class PosterScreenHandler extends BaseScreenHandler {
       now.getDay() === 4 &&
       ((now.getHours() === 16 && now.getMinutes() >= 30) || now.getHours() >= 17)
     ) {
+      this.mode = PosterModesGewis.BORREL;
       this.borrelModeDay = now.getDay();
+    }
+  }
+
+  public setMode(mode: PosterModeAll) {
+    switch (mode) {
+      case PosterModesGewis.BORREL: {
+        this.setBorrelModeEnabled(true);
+        break;
+      }
+      default: {
+        this.mode = mode;
+      }
     }
   }
 
   public setBorrelModeEnabled(enabled: boolean) {
     if (enabled) {
+      this.mode = PosterModesGewis.BORREL;
       this.borrelModeDay = new Date().getDay();
     } else {
       this.borrelModeDay = undefined;

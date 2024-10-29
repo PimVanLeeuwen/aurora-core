@@ -12,13 +12,29 @@ import NsTrainsService, { TrainResponse } from './ns-trains-service';
 import GEWISPosterService, { GEWISPhotoAlbumParams } from './gewis-poster-service';
 import OlympicsService from './olympics-service';
 
-interface BorrelModeParams {
-  enabled: boolean;
+export enum PosterModesBase {
+  STANDARD = 'STANDARD'
+}
+
+export enum PosterModesGewis {
+  BORREL = 'BORREL',
+}
+
+export enum PosterModesHubble {
+  COBO = 'COBO',
+  LAST_CALL = 'LAST_CALL',
+  CLOSED = 'CLOSED'
+}
+
+export type PosterModeAll = PosterModesBase | PosterModesGewis | PosterModesHubble;
+
+interface PosterModeParams {
+  mode: PosterModeAll;
 }
 
 interface PosterResponse {
   posters: Poster[];
-  borrelMode: boolean;
+  mode: PosterModeAll;
 }
 
 @Route('handler/screen/poster')
@@ -40,7 +56,7 @@ export class PosterScreenController extends Controller {
     SecurityGroup.SCREEN_SUBSCRIBER,
   ])
   @Get('')
-  public async getPosters(@Query() alwaysReturnBorrelPosters?: boolean): Promise<PosterResponse> {
+  public async getPosters(): Promise<PosterResponse> {
     if (!this.screenHandler.posterManager.posters) {
       try {
         await this.screenHandler.posterManager.fetchPosters();
@@ -49,15 +65,9 @@ export class PosterScreenController extends Controller {
       }
     }
     const posters = this.screenHandler.posterManager.posters ?? [];
-    if (alwaysReturnBorrelPosters || this.screenHandler.borrelMode) {
-      return {
-        posters,
-        borrelMode: this.screenHandler.borrelMode,
-      };
-    }
     return {
-      posters: posters.filter((p) => !p.borrelMode),
-      borrelMode: false,
+      posters: posters,
+      mode: this.screenHandler.mode
     };
   }
 
@@ -75,9 +85,9 @@ export class PosterScreenController extends Controller {
     SecurityGroup.BAC,
     SecurityGroup.BOARD,
   ])
-  @Get('borrel-mode')
-  public async getPosterBorrelMode(): Promise<BorrelModeParams> {
-    return { enabled: this.screenHandler.borrelMode };
+  @Get('poster-mode')
+  public async getPosterMode(): Promise<PosterModeParams> {
+    return { mode: this.screenHandler.mode };
   }
 
   @Security('local', [
@@ -87,13 +97,13 @@ export class PosterScreenController extends Controller {
     SecurityGroup.BOARD,
   ])
   @Put('borrel-mode')
-  public async setPosterBorrelMode(
+  public async setPosterMode(
     @Request() req: ExpressRequest,
-    @Body() body: BorrelModeParams,
+    @Body() body: PosterModeParams,
   ): Promise<void> {
-    const { enabled } = body;
-    logger.audit(req.user, `Set poster screen borrel mode to "${enabled ? 'true' : 'false'}".`);
-    this.screenHandler.setBorrelModeEnabled(enabled);
+    const { mode } = body;
+    logger.audit(req.user, `Set poster screen mode to "${mode}".`);
+    this.screenHandler.setMode(mode);
   }
 
   @Security('local', [SecurityGroup.SCREEN_SUBSCRIBER])

@@ -3,7 +3,7 @@ import { PosterManager } from '../poster-manager';
 import {
   BasePoster,
   ErrorPoster,
-  FooterSize,
+  FooterStyle,
   LocalPoster,
   LocalPosterType,
   MediaPoster,
@@ -130,7 +130,7 @@ export class TrelloPosterManager extends PosterManager {
       // If there are labels, set the label of this poster to be the first label of the card
       label: footers.length > 0 ? labels[0] : '',
       // If the card has a HIDE_LABEL label, set the footer size to minimal
-      footer: hideBorder ? FooterSize.MINIMAL : FooterSize.FULL,
+      footer: hideBorder ? FooterStyle.MINIMAL : FooterStyle.FULL,
       borrelMode,
     };
   }

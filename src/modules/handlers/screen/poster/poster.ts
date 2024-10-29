@@ -1,3 +1,11 @@
+export interface GewisPosterProperties {
+  borrelMode: boolean;
+}
+
+export interface HubblePosterProperties {
+  color: string;
+}
+
 export enum PosterType {
   UNKNOWN = 'unknown',
   ERROR = 'error',
@@ -15,10 +23,11 @@ export enum PosterType {
   OLYMPICS = 'olympics',
 }
 
-export enum FooterSize {
+export enum FooterStyle {
   FULL = 'full',
   MINIMAL = 'minimal',
   HIDDEN = 'hidden',
+  HIDE_CLOCK = 'hide_clock'
 }
 
 export interface BasePoster {
@@ -27,9 +36,8 @@ export interface BasePoster {
   label: string;
   due?: Date;
   timeout: number;
-  footer: FooterSize;
-  /** Whether this poster should only be shown when in BorrelMode */
-  borrelMode: boolean;
+  footer: FooterStyle;
+  customPosterProperties: GewisPosterProperties | HubblePosterProperties;
 }
 
 export type LocalPosterType =
