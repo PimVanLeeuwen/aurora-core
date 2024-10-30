@@ -37,7 +37,7 @@ export interface BasePoster {
   due?: Date;
   timeout: number;
   footer: FooterStyle;
-  customPosterProperties: GewisPosterProperties | HubblePosterProperties;
+  customPosterProperties?: GewisPosterProperties | HubblePosterProperties;
 }
 
 export type LocalPosterType =

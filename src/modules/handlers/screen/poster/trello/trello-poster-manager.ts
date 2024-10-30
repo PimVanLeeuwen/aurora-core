@@ -59,8 +59,6 @@ export class TrelloPosterManager extends PosterManager {
           throw new Error(`Unknown list: ${card.name}`);
         }
 
-        const borrelMode = labels.includes('BorrelMode');
-
         // If the card has a due date and this due date is in the past, skip this card
         if (card.due && new Date(card.due) < now) return undefined;
         // If the card has a start date and this start date is in the future, skip this card
@@ -86,7 +84,7 @@ export class TrelloPosterManager extends PosterManager {
         }
 
         const poster: LocalPoster = {
-          ...this.parseBasePoster(card, checklists, borrelMode),
+          ...this.parseBasePoster(card, checklists),
           type,
         };
 
@@ -101,10 +99,9 @@ export class TrelloPosterManager extends PosterManager {
    * Parse all generic poster information
    * @param card
    * @param checklists
-   * @param borrelMode
    * @private
    */
-  private parseBasePoster(card: Card, checklists: Checklist[], borrelMode: boolean): BasePoster {
+  private parseBasePoster(card: Card, checklists: Checklist[]): BasePoster {
     // Find the index of the "timeout" checklist if it exists
     // @ts-ignore
     const indexTimeout = checklists.findIndex(
@@ -118,8 +115,17 @@ export class TrelloPosterManager extends PosterManager {
     }
 
     const labels = card.labels?.map((l) => l.name ?? '') ?? [];
-    const hideBorder = labels.includes('HIDE_BORDER');
-    const footers = labels.filter((l) => !['HIDE_BORDER', 'BorrelMode'].includes(l));
+    const footerLabel = labels.filter((l) => !['HIDE_BORDER', 'BorrelMode', 'HIDE_CLOCK'].includes(l) || l.startsWith('COLOR-'));
+
+    let footerStyle;
+
+    if(labels.includes('HIDE_BORDER')) {
+      footerStyle = FooterStyle.MINIMAL;
+    } else if(labels.includes('HIDE_CLOCK')) {
+      footerStyle = FooterStyle.HIDE_CLOCK;
+    } else {
+      footerStyle = FooterStyle.FULL;
+    }
 
     return {
       id: card.id ?? randomUUID(),
@@ -128,10 +134,13 @@ export class TrelloPosterManager extends PosterManager {
       // If there is a due date present, set the due date
       due: card.due ? new Date(card.due) : undefined,
       // If there are labels, set the label of this poster to be the first label of the card
-      label: footers.length > 0 ? labels[0] : '',
+      label: footerLabel.length > 0 ? labels[0] : '',
       // If the card has a HIDE_LABEL label, set the footer size to minimal
-      footer: hideBorder ? FooterStyle.MINIMAL : FooterStyle.FULL,
-      borrelMode,
+      footer: footerStyle,
+      customPosterProperties: {
+        borrelMode: labels.includes('BorrelMode'),
+        color: labels.find(l => l.startsWith('COLOR-'))?.split('-')[1]
+      }
     };
   }
 
@@ -140,16 +149,14 @@ export class TrelloPosterManager extends PosterManager {
    * @param card
    * @param checklists
    * @param type
-   * @param borrelMode
    * @private
    */
   private async parseMediaPoster(
     card: Card,
     checklists: Checklist[],
     type: PosterType.IMAGE | PosterType.VIDEO,
-    borrelMode = false,
   ): Promise<MediaPoster | ErrorPoster> {
-    const poster = this.parseBasePoster(card, checklists, borrelMode);
+    const poster = this.parseBasePoster(card, checklists);
 
     if (!card.id) {
       return {
@@ -177,20 +184,18 @@ export class TrelloPosterManager extends PosterManager {
    * Given a photo card, parse it and its albums
    * @param card
    * @param checklists
-   * @param borrelMode
    * @private
    */
   private async parsePhotoPoster(
     card: Card,
-    checklists: Checklist[],
-    borrelMode = false,
+    checklists: Checklist[]
   ): Promise<Poster> {
     // Find the checklist called "photos", that should contain the album ids
     const index = checklists.findIndex((checklist) => checklist.name.toLowerCase() === 'photos');
     // If such list cannot be found, it does not exist. Throw an error because we cannot continue
     if (index === undefined || index < 0) {
       return {
-        ...this.parseBasePoster(card, checklists, borrelMode),
+        ...this.parseBasePoster(card, checklists),
         type: PosterType.ERROR,
         message: 'Photo card has no checklist named "photos"',
       };
@@ -200,7 +205,7 @@ export class TrelloPosterManager extends PosterManager {
     // @ts-ignore
     const albums = checkList.checkItems.map((item: any) => item.name.split(' ')[0]);
     return {
-      ...this.parseBasePoster(card, checklists, borrelMode),
+      ...this.parseBasePoster(card, checklists),
       type: PosterType.PHOTO,
       albums,
     };
@@ -211,13 +216,11 @@ export class TrelloPosterManager extends PosterManager {
    * If the card description is an invalid URL, return an ERROR poster
    * @param card
    * @param checklists
-   * @param borrelMode
    * @private
    */
   private async parseExternalPoster(
     card: Card,
     checklists: Checklist[],
-    borrelMode = false,
   ): Promise<Poster> {
     const isUrl = (url: string): boolean => {
       try {
@@ -235,13 +238,13 @@ export class TrelloPosterManager extends PosterManager {
 
     if (!card.desc || !isUrl(url)) {
       return {
-        ...this.parseBasePoster(card, checklists, borrelMode),
+        ...this.parseBasePoster(card, checklists),
         type: PosterType.ERROR,
         message: 'Card description does not exist or is not a valid HTTP/HTTPS URL',
       };
     }
     return {
-      ...this.parseBasePoster(card, checklists, borrelMode),
+      ...this.parseBasePoster(card, checklists),
       type: PosterType.EXTERNAL,
       source: [url || ''],
     };
